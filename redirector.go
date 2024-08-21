@@ -20,12 +20,13 @@ func (h HttpsRedirector) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	http.Redirect(rw, req, u.String(), http.StatusMovedPermanently)
 }
 
-// HttpsRedirectorServer launches a redirector and serves serves requests. It will not return unless an error happens.
+// HttpsRedirectorServer launches a redirector and serves serves requests in a separate goroutine.
 func HttpsRedirectorServer(proto, ip, targetHost string) error {
 	l, err := net.Listen(proto, ip)
 	if err != nil {
 		return err
 	}
 
-	return http.Serve(l, HttpsRedirector(targetHost))
+	go http.Serve(l, HttpsRedirector(targetHost))
+	return nil
 }
