@@ -14,6 +14,9 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
+// ServerHost is filled when calling Serve() and will contain the hostname that was generated for this machine
+var ServerHost string
+
 // Serve is a simple function that will listen on http/https ports, and redirect all
 // http requests to the right https host.
 func Serve(h http.Handler) error {
@@ -29,7 +32,7 @@ func Serve(h http.Handler) error {
 		ip = netip.AddrFrom4([...]byte{127, 0, 0, 1})
 	}
 
-	serverHost := b32e.EncodeToString(ip.AsSlice()) + ".g-dns.net"
+	ServerHost = b32e.EncodeToString(ip.AsSlice()) + ".g-dns.net"
 
 	l, err := getSocketFallback(443)
 	if err != nil {
@@ -39,17 +42,17 @@ func Serve(h http.Handler) error {
 	m := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		Cache:      autocert.DirCache(os.TempDir()),
-		HostPolicy: autocert.HostWhitelist(serverHost),
+		HostPolicy: autocert.HostWhitelist(ServerHost),
 	}
 	cfg := m.TLSConfig()
 	l = tls.NewListener(l, cfg)
 	go http.Serve(l, h)
 
-	log.Printf("cloudhttp: listening on %s for https connections on host %s", l.Addr(), serverHost)
+	log.Printf("cloudhttp: listening on %s for https connections on host %s", l.Addr(), ServerHost)
 
 	l, err = getSocketFallback(80)
 	if err == nil {
-		go http.Serve(l, HttpsRedirector(serverHost))
+		go http.Serve(l, HttpsRedirector(ServerHost))
 		log.Printf("cloudhttp: listening on %s for http connections", l.Addr())
 	}
 	return nil
